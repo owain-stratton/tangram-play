@@ -8,6 +8,7 @@ import BooleanMarker from '../components/textmarkers/BooleanMarker';
 import { editor, parsedYAMLDocument } from './editor';
 import { indexesFromLineRange } from './codemirror/tools';
 import {
+  YAML_ANCHOR_REF,
   getScalarNodesInRange,
   getKeyNameForNode,
   getValuesFromSequenceNode,
@@ -159,6 +160,9 @@ function createAndRenderTextMarker(doc, node, mark) {
     handleMouseEvents: false,
   });
 
+  // Get the actual node if the marker is on an anchor reference.
+  const sourceNode = (node.kind === YAML_ANCHOR_REF) ? node.value : node;
+
   // Add a reference to the YAMLNode on the marker.
   marker.node = node;
 
@@ -167,10 +171,12 @@ function createAndRenderTextMarker(doc, node, mark) {
   switch (mark.type) {
     case 'color': {
       // A color value may be a string or an array of values.
+      const value = sourceNode.value || getValuesFromSequenceNode(sourceNode);
+
       markerEl = (
         <ColorMarker
           marker={marker}
-          value={node.value || getValuesFromSequenceNode(node)}
+          value={value}
         />
       );
       break;
@@ -184,12 +190,12 @@ function createAndRenderTextMarker(doc, node, mark) {
           marker={marker}
           options={mark.options}
           source={mark.source}
-          initialValue={node.value}
+          initialValue={sourceNode.value}
         />
       );
       break;
     case 'boolean':
-      markerEl = <BooleanMarker marker={marker} value={node.value} />;
+      markerEl = <BooleanMarker marker={marker} value={sourceNode.value} />;
       break;
     // Disabling vector for now
     // case 'vector':
@@ -219,7 +225,7 @@ function createAndRenderTextMarker(doc, node, mark) {
 export function insertTextMarkers(cm, ast, fromLine, toLine) {
   const doc = cm.getDoc();
   const range = indexesFromLineRange(doc, fromLine, toLine);
-  const nodes = getScalarNodesInRange(ast, range.start, range.end);
+  const nodes = getScalarNodesInRange(ast, range.start, range.end, true);
   const marks = getTextMarkerConstructors(nodes);
   const readOnly = cm.isReadOnly();
 

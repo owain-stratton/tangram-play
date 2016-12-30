@@ -204,14 +204,17 @@ function getNodeAtKeyAddress(ast, address) {
  * This is because these nodes reference the original scalar nodes, so they're
  * not clones. A referenced node can't be traced back to its anchor reference
  * when it's returned by itself, since its parent is its original source parent,
- * not the anchor reference parent.
+ * not the anchor reference parent. If `includeRefs` is `true`, the node returned
+ * is the anchor reference node itself with the scalar node as a `value`.
  *
  * @param {YAMLNode} ast - a parsed syntax tree object, should be root of the tree
  * @param {Number} fromIndex - a position index at start of range
  * @param {Number} toIndex - a position index at end of range
+ * @param {Boolean} includeRefs - if `true`, includes anchor references to
+ *          scalar nodes. Defaults to `false`.
  * @returns {Array} foundNodes - array of scalar nodes that overlap this range.
  */
-export function getScalarNodesInRange(ast, fromIndex, toIndex) {
+export function getScalarNodesInRange(ast, fromIndex, toIndex, includeRefs = false) {
   function findNodes(node, start, end, initial = []) {
     // Nodes can be a null value. See documentation for `getNodeAtIndex()`.
     if (!node) return initial;
@@ -256,6 +259,13 @@ export function getScalarNodesInRange(ast, fromIndex, toIndex) {
           if (node.endPosition < start || node.startPosition > end) break;
 
           found = findNodes(item, start, end, found);
+        }
+        break;
+      // If `includeRefs` is `true`, add to the array if its value is a scalar.
+      case YAML_ANCHOR_REF:
+        console.log(node);
+        if (includeRefs && node.value.kind === YAML_SCALAR) {
+          found.push(node);
         }
         break;
       // Catch-all for unhandled node types: return accrued array as-is
